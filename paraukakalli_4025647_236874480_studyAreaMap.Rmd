@@ -1,0 +1,134 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+Start by requiring the appropriate packages.
+```{r}
+require(tidyverse)
+require(sf)
+require(tigris)
+require(geodata)
+require(terra)
+require(colorspace)
+require(tidyterra)
+require(ggnewscale)
+require(cowplot)
+require(oce)
+```
+
+Next, read in the locations of the acoustic receivers. Some of these have been deactivated or removed, so I just want to plot the active receivers of interest. I'm also converting the lat/long coordinates. You'll eventually see that one of the receivers is way off the main channel of the river. I think there was a transcription error when someone first recorded those coordinates.  
+```{r}
+receivers<-read.csv("C:/Users/jjv0016/OneDrive - Auburn University/Teaching/Spatial Ecology/Lab2/submissions/paraukakalli_4025647_236874481_ReceiversGIS.csv") #insert "ReceiversGIS.csv" here
+receiversUTM<-data.frame(lonlat2utm(receivers$Long, receivers$Lat))
+receiversNew<-cbind(receivers, receiversUTM$easting, receiversUTM$northing) %>%
+  filter(Batch=='MF Bank')
+```
+
+Taking the receiver location data frame into a spatial sf object.
+```{r}
+receiversSF<-st_as_sf(receiversNew, coords=c('receiversUTM$easting', 'receiversUTM$northing'), crs='+proj=utm +zone=16 +ellps=GRS80 +datum=NAD83 +units=m +no_defs')
+plot(st_geometry(receiversSF))
+```
+
+Creating a bounding box around the receiver locations.
+```{r}
+studyAreaBDR<-st_bbox(receiversSF)
+studyAreaBDR<-studyAreaBDR+c(-2000, -2000, 2000, 2000)
+studyAreaBDR<-st_as_sfc(studyAreaBDR)
+plot(studyAreaBDR)
+```
+
+Now plotting the state of Alabama and projecting it to UTM Zone 16N. 
+```{r}
+alabama<-states() %>%
+  filter(NAME=='Alabama')
+plot(st_geometry(alabama))
+st_crs(alabama)$proj4string
+alabama = st_transform(alabama, st_crs(receiversSF))
+```
+
+Read in the USACE reservoirs shapefile and filter out William (Bill) Dannelly Reservoir. Then project it UTM Zone 16N as well.
+```{r}
+Dannelly<-st_read("C:/Users/jjv0016/OneDrive - Auburn University/Teaching/Spatial Ecology/Lab2/submissions/paraukakalli_4025647_236874513_USACE_Reservoirs/USACE_Reservoirs/USACE_Reservoirs.shp") %>% # insert "USACE_Reservoirs" here
+  filter(NAME=="William Dannelly Reservoir")
+  st_transform(Dannelly, st_crs(receiversSF))  
+  plot(st_geometry(Dannelly))
+```
+
+Prepare the elevation layer. 
+```{r}
+usaElev<-elevation_30s(country='USA', path=tempdir())
+
+alabama=st_transform(alabama, st_crs(usaElev))
+alabamaElev=crop(usaElev, alabama)
+
+plot(alabamaElev)
+plot(st_geometry(alabama), add=T)
+
+alabamaElev<-mask(alabamaElev, alabama)
+plot(alabamaElev)
+
+studyAreaBDR<-st_transform(studyAreaBDR, st_crs(alabama))
+studyAreaElevation<-crop(alabamaElev, studyAreaBDR)
+plot(studyAreaElevation, col=sequential_hcl(13, "Terrain"))
+```
+Final products...
+
+Zoomed out map.
+```{r}
+zoomedOut<-ggplot()+
+  geom_sf(data=alabama)+
+  geom_sf(data=studyAreaBDR, fill=NA, color='red')
+
+zoomedOut<-zoomedOut+
+  theme_bw()+
+  theme(panel.grid=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(),
+        panel.border=element_blank())
+
+zoomedOut
+```
+
+Zoomed in map.
+```{r}
+zoomedIn<-ggplot()+
+  geom_spatraster(data=studyAreaElevation)+
+  scale_fill_gradient(low='white', high='black', na.value='#99CCFF', labs(fill='Elevation'))+
+  new_scale_fill()+
+  theme_bw()+
+  theme(panel.grid=element_blank(),
+        axis.text.x=element_text(angle=90, vjust=0.5, size=6))
+
+zoomedIn<-zoomedIn+
+  geom_sf(data=Dannelly, fill='blue')+
+  geom_sf(data=receiversSF, aes(pch=Batch), color='red')
+  
+
+zoomedIn
+```
+Combining the plots.
+```{r}
+legend<-get_legend(zoomedIn)
+ggdraw(legend)
+
+supportingFig<-plot_grid(zoomedOut, ggdraw(legend), ncol=1, rel_heights = c(0.5, 1))
+
+supportingFig
+```
+Finished map.
+```{r}
+plot_grid(zoomedIn, zoomedOut, rel_widths=c(1, 0.2))
+```
+This map represents Dannelly Reservoir, one link in a chain of reservoirs created by U.S. Army Corps of Engineers dams on the Alabama River. Dannelly supports a population of paddlefish that is effectively held captive by impoundments at the up- and downstream ends of the reservoir. Paddlefish are migratory and require different habitat types seasonally to complete their life history. This study explores the availability of spawning habitat in Dannelly and aims to identify areas that may be important to reproduction and recruitment. 
+
+I wanted to make a map that would be immediately useful to me, so I chose to illustrate some of my receiver locations. That was a file that I had on hand. I've been sitting on the USACE Reservoirs shapefile for a while and have used it in some other projects, so that was essentially on hand as well. I initially downloaded that from a USACE website. I actually had a bathymetry raster that I would have preferred to include over the elevation file, but I had some difficulty getting it into R. It was neat though and really highlighted the difference in depth between the more riverine section upstream and the lentic section downstream.
+
+
+
+# Grade
+
+$\color{red}{\text{Awesome, Kalli. My only complaint is that the legend item for your red dots says "Batch" and "MF Bank" which isn't terribly clear. But I'll give it to you. Nice work.}}$
