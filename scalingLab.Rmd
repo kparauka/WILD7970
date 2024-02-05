@@ -2,6 +2,18 @@
 title: "Lab 3 Assignment - Scale"
 output: html_notebook
 ---
+
+```{r}
+require(tidyverse)
+require(sf)
+require(AICcmodavg)
+require(tigris)
+require(FedData)
+require(terra)
+require(tidyterra)
+```
+
+
 ## Challenge 1 (4 points)
 
 **Build a raster with 100 rows and 100 columns. Fill the raster cells with values of a random variable drawn from a distribution of your choosing (Poisson, Normal, Uniform, etc.). Calculate the mean and variance of the values in that raster. Now increase the grain size of those cells by factors of 2, 5, and 10, combining cell values using a mean function. At each iteration, calculate the mean and variance of the values in the resulting raster. Generate 2 scatterplots that have grain size on the x-axis. Plot the mean raster value on the y-axis of the first, and variance on the y-axis of the second. What do you notice about how these values change as you "scale up" the grain size? Why do you think this pattern occurs?**
@@ -39,6 +51,8 @@ plot(variance_values~grain)
 ```
 
 As the scale increases, the mean stays the same but the variance decreases. This is because the heterogeneity is effectively averaged out, or masked by the average. 
+
+$\color{red}{\text{I'm not sure what you mean when you say "masked" by the average. But you're on the right track. Every time you average a group of cells, you're losing some variation among those cells while the new value of the aggregated cell is almost certainly going to be closer to the mean. Also, In order to make this .rmd file reproducible, you need to include a code chunk at the beginning of the file that loads your necessary packages. +3}}$
 
 
 ## Challenge 2 (4 points)
@@ -79,11 +93,15 @@ plot(varianceChallenge2~grain)
 
 Again, the mean remains mostly the same, although you can see a slight increase that wasn't apparent in the previous method. You can also see that the range of values decreases - i.e. the maximum decreases and the minimum increases, which wasn't visible before. 
 
+$\color{red}{\text{The goal of this exercise was to use a different summary function when aggregating your cells. It looks to me like you used the mean function again. I also asked you to give me a situation in which you might use something besides the mean for these summaries. +2}}$
+
 ## Challenge 3 (2 points)
 
 **Recall that before we calculated forest cover, we cropped our NLCD raster to minimize its size and the computing effort necessary from our poor little computers. How might that affect our ability to evaluate the scale at which five-lined skinks respond to forest cover? Why?**
 
 Cropping the NLCD raster reduces the extent of the study area and hypothetically should allow us to refine the grain at which we're evaluating skink responses. We might get a better picture of spatial variance when looking at a smaller area because heterogeneity is not averaged out in the larger grain that is typically associated with greater extents.
+
+$\color{red}{\text{I'll give it to you. What I was looking for is that we simply can't accurately explore scales greater than 10 km when we crop at 10 km because our buffers around our points will start creeping into areas for which we don't have data. +2}}$
 
 ## Challenge 4 (4 points)
 
@@ -166,6 +184,8 @@ forestData %>%
 ```
 I'm not sure that I'm interpreting this correctly, but what I'm gathering is a positive correlation that increases in strength as scale increases. 
 
+$\color{red}{\text{Yes, you're interpreting that correctly. But also, scales that are further apart are less correlated. +3}}$
+
 ## Challenge 5 (4 points)
 
 **Fit 8 logistic regression models (a null model and one for each of the 7 forest scales). Compare these models using AICc. Which scale do you think represents the critical or characteristic scale at which forest cover affects skink presence? Is this scale clearly better than the others, or is there some ambiguity? What are some mechanisms by which forest cover could affect skink presence at this scale? What is your overall conclusion regarding how forest cover affects skink presence (i.e., take a look at the betas)?**
@@ -190,6 +210,8 @@ I think the relative availability of edge habitat might affect skinks at this sc
 
 My overall conclusion is that it may be a range of scales. Although, the validity of this probably depends on how much stock you put in the 3 km model. 
 
+$\color{red}{\text{Great. But also, it's important to note that the probability of skink occupancy generally increases with increasing forest cover at all scales. +3.5}}$
+
 ## Challenge 6 (2 points)
 
 **If you encounter ambiguity in identifying the characteristic scale of an effect, can you come up with a clever way to condense the information in the multi-scale variables into just one or two? When might it be ok to include two covariates in the same model (think multiple regression) that represent the same ecological feature measured at different scales (e.g., forest cover at 1 km AND forest cover at 5 km in the same model)? I can think of both a biological and a statistical answer to this question.**
@@ -197,9 +219,7 @@ My overall conclusion is that it may be a range of scales. Although, the validit
 I think you could include two covariates for the same feature if one affected organisms at the individual scale and one affected organisms at a population scale. There could be processes at the 1 km scale that affect whether an individual skink might momentarily choose one patch of habitat over another, as well as processes at the 5 km scale that determine if a patch of habitat can sustain skinks over time. 
 
 In terms of resolving this statistically, maybe you could nest the effects of smaller scales and larger scales. I don't know if this is clever or if it would work but it's all I can think of.
-\
-\
-\
-\
+
+$\color{red}{\text{Clever thinking. I was looking for you to note that you probably shouldn't include 2 variables in the model if they were highly correlated. +2}}$
 
 
