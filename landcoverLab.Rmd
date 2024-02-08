@@ -1,0 +1,567 @@
+---
+title: "Lab 4 Assignment - Landcover"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r, warning=F, error=F, message=F}
+require(Voss)
+require(tidyverse)
+require(terra)
+require(FedData)
+require(sf)
+require(tidyterra)
+require(landscapemetrics)
+require(PerformanceAnalytics)
+require(wesanderson)
+require(raster)
+require(terra)
+```
+
+## Challenge 1 (4 points)
+
+**The landscapemetrics package has functions for calculating 12 patch-level metrics. Calculate all 12 of these for every forest patch in our nlcdSimple raster (using the 8-direction rule). This will result in 12 unique values associated with each forest patch. Use the chart.Correlation() function from the PerformanceAnalytics package to examine the correlation among all 12 of these variables. What patterns do you notice, and what do they tell you about the uniqueness or redundancy of the patch-level metrics you calculated?**
+
+```{r}
+# Recreating the "nlcdSimple" and "forest" rasters
+studyArea = st_read('/vsicurl/https://github.com/ValenteJJ/SpatialEcology/raw/main/Week4/studyArea.shp')
+nlcd = get_nlcd(studyArea, label='AlLandscape', year=2011)
+
+nlcdSimple = nlcd
+nlcdSimple[nlcdSimple==11] = 1 
+nlcdSimple[nlcdSimple %in% c(21, 22, 23, 24)] = 2 
+nlcdSimple[nlcdSimple %in% c(31, 52)] = 3 
+nlcdSimple[nlcdSimple %in% c(41,42,43)] = 4 
+nlcdSimple[nlcdSimple == 71] = 5 
+nlcdSimple[nlcdSimple %in% c(81,82)] = 6 
+
+tmp = data.frame('ID' = c(1, 2, 3, 4, 5, 6),
+                 'category' = c('wetland', 'developed', 'open', 'forest', 'grassland', 'agriculture'))
+nlcdSimple = categories(nlcdSimple, value=tmp)
+
+ggplot(nlcdSimple, aes(x=x, y=y, fill=category)) +
+  geom_raster()+
+  scale_fill_manual(values = wes_palette("GrandBudapest2", 6, type = "continuous"))
+
+forest = nlcdSimple %>% 
+  setValues(NA)
+  
+forest[nlcdSimple ==4] = 1
+
+
+# Patch level metrics (12)
+
+# 1. Patch area
+patchArea<-lsm_p_area(forest, directions = 8)
+patchArea
+
+# 2. Core area index
+patchCAI<-lsm_p_cai(forest, directions = 8)
+patchCAI
+
+# 3. Related circumscribing circle
+patchCircle<-lsm_p_circle(forest, directions=8)
+patchCircle
+
+# 4. Contiguity index
+patchContig<-lsm_p_contig(forest, directions = 8)
+patchContig
+
+# 5. Core area
+patchCore<-lsm_p_core(forest, directions = 8)
+patchCore
+
+# 6. Euclidean nearest-neighbor distance
+patchEnn<-lsm_p_enn(forest, directions = 8)
+patchEnn
+
+# 7. Fractal dimension index
+patchFrac<-lsm_p_frac(forest, directions = 8)
+patchFrac
+
+# 8. Radius of gyration
+patchGyrate<-lsm_p_gyrate(forest, directions = 8)
+patchGyrate
+
+# 9. Number of core areas
+patchNcore<-lsm_p_ncore(forest, directions = 8)
+patchNcore
+
+# 10. Perimeter-area ratio
+patchPara<-lsm_p_para(forest, directions = 8)
+patchPara
+
+# 11. Perimeter
+patchPerim<-lsm_p_perim(forest, directions=8)
+patchPerim
+
+# 12. Shape index
+patchShape<-lsm_p_shape(forest, directions = 8)
+patchShape
+
+# Correlation matrix
+patchMetrics<-data.frame(
+  patchArea = patchArea$value,
+  coreAreaIndex = patchCAI$value,
+  patchCircle = patchCircle$value,
+  patchContig = patchContig$value,
+  patchCore = patchCore$value,
+  patchEnn = patchEnn$value,
+  patchFract = patchFrac$value,
+  patchGyrate = patchGyrate$value,
+  patchNcore = patchNcore$value,
+  patchPara = patchPara$value,
+  patchPerim = patchPerim$value,
+  patchShape = patchShape$value)
+
+PerformanceAnalytics::chart.Correlation(patchMetrics, histogram=F)
+```
+
+
+A few of these metrics are very highly correlated (e.g., patchCore and patchArea or patchPerim and patchArea) with values at or very near 1. These metrics would probably be redundant and largely seem to describe how different features of the same patch relate. For example, patchCore is essentially patchArea minus the cells at the edge. It also makes sense that patchPerim and patchArea would be highly correlated - they are geometrically related features. Relatively few of the patch metrics demonstrate little or statistically insignificant degrees of correlation. It seems like these occur largely between metrics that describe the features of patches and those that describe the distribution of patches relative to others on the same landscape.
+
+
+## Challenge 2 (4 points)
+
+**In our lab, we used the 8-direction or "queen" rule to delineate patches. Using the nlcdSimple raster we created, explore the differences in patch characteristics if you were to use the 4-direction or "rook" rule for delineating patches. Calculate the following class-level metrics for forest cover for both the queen and rook patch delineation rules: number of patches, mean patch size, standard deviation in patch size, nearest-neighbor distance, and total edge length. What patterns do you notice? When might it be appropriate to use one rule vs. the other?**
+
+```{r}
+classCats = data.frame('class' = c(1, 2, 3, 4, 5, 6),
+                 'category' = c('wetland', 'developed', 'open', 'forest', 'grassland', 'agriculture'))
+
+# Number of patches
+lsm_c_np(nlcdSimple, directions = 4) %>%
+  left_join(classCats, by='class')
+lsm_c_np(nlcdSimple, directions = 8) %>%
+  left_join(classCats, by='class')
+
+# Mean patch size
+lsm_c_area_mn(nlcdSimple, directions = 4) %>% 
+  left_join(classCats, by='class')
+lsm_c_area_mn(nlcdSimple, directions = 8) %>% 
+  left_join(classCats, by='class')
+
+# Standard deviation in patch size
+lsm_c_area_sd(nlcdSimple, directions = 4) %>% 
+  left_join(classCats, by='class')
+lsm_c_area_sd(nlcdSimple, directions = 8) %>% 
+  left_join(classCats, by='class')
+
+# Nearest neighbor distance
+lsm_c_enn_mn(nlcdSimple, directions = 4) %>% 
+  left_join(classCats, by='class')
+lsm_c_enn_mn(nlcdSimple, directions = 8) %>% 
+  left_join(classCats, by='class')
+
+# Total edge length
+lsm_c_te(nlcdSimple, directions = 4) %>%
+  left_join(classCats, by='class')
+lsm_c_te(nlcdSimple, directions = 8) %>%
+  left_join(classCats, by='class')
+```
+
+Most of the metrics increased as I switched from the rook to queen rule (mean patch size, standard deviation of patch size, and mean nearest neighbor distances). The number of patches decreased, presumably because the criteria for being considered a patch became more strict. And the total edge remained the same, which makes sense if you draw and measure the perimeters of two cells under different rules. I think in choosing one or the other, you would want to consider how conservative you want to be, the scale of what you're looking at, and the nature of the habitat types/patches (i.e. continuous or discrete). You might want to use a queen rule when looking at habitat patches over an area with variable elevation, but a rook rule might be more appropriate for urban developments and greenspaces in a city.
+
+
+## Challenge 3 (4 points)
+
+
+**Using the same zoomed-in study area that we used in the lab, download NLCD raster data for the years 2001 and 2019 and simplify these rasters into 6 landcover categories (wet, developed, barren, forest, grassland, and agriculture). Plot these two rasters. What are some of the initial changes you notice between 2001 and 2019?**
+
+```{r}
+challenge3SA<-st_read('/vsicurl/https://github.com/ValenteJJ/SpatialEcology/raw/main/Week4/studyArea.shp')
+
+# 2011
+nlcd2001<-get_nlcd(challenge3SA, label='AlLandscape', year=2001)
+nlcd2001[nlcd2001==11] = 1 
+nlcd2001[nlcd2001 %in% c(21, 22, 23, 24)] = 2 
+nlcd2001[nlcd2001 %in% c(31, 52)] = 3 
+nlcd2001[nlcd2001 %in% c(41,42,43)] = 4 
+nlcd2001[nlcd2001 == 71] = 5 
+nlcd2001[nlcd2001 %in% c(81,82)] = 6 
+tmp<-data.frame('ID' = c(1, 2, 3, 4, 5, 6),
+                 'category' = c('wetland', 'developed', 'open', 'forest', 'grassland', 'agriculture'))
+nlcd2001<-categories(nlcd2001, value=tmp)
+ggplot(nlcd2001, aes(x=x, y=y, fill=category)) +
+  geom_raster()+
+ scale_fill_manual(values = wes_palette("GrandBudapest2", 6, type = "continuous"))
+
+# 2019
+nlcd2019<-get_nlcd(challenge3SA, label='AlLandscape', year=2019)
+nlcd2019[nlcd2019==11] = 1 
+nlcd2019[nlcd2019 %in% c(21, 22, 23, 24)] = 2 
+nlcd2019[nlcd2019 %in% c(31, 52)] = 3 
+nlcd2019[nlcd2019 %in% c(41,42,43)] = 4 
+nlcd2019[nlcd2019 == 71] = 5 
+nlcd2019[nlcd2019 %in% c(81,82)] = 6 
+tmp<-data.frame('ID' = c(1, 2, 3, 4, 5, 6),
+                 'category' = c('wetland', 'developed', 'open', 'forest', 'grassland', 'agriculture'))
+nlcd2019<-categories(nlcd2019, value=tmp)
+ggplot(nlcd2019, aes(x=x, y=y, fill=category)) +
+  geom_raster()+
+  scale_fill_manual(values = wes_palette("GrandBudapest2", 6, type = "continuous"))
+```
+
+At a glance, the amount of forest cover in the area decreased substantially between 2001 and 2019. That area has been supplanted largely by open, grassland, and agricultural landcover types.
+
+**Quantify this at the class level by calculating and reporting the changes in (1) the total amount of each land cover type (2) mean patch size for each land cover type, and (3) mean nearest neighbor distance for each cover type between the years 2011 and 2019. Give a short description of how you interpret the changes in these values.**
+
+```{r}
+classCats = data.frame('class' = c(1, 2, 3, 4, 5, 6),
+                 'category' = c('wetland', 'developed', 'open', 'forest', 'grassland', 'agriculture'))
+
+# Total amount of each landcover type
+lsm_c_ca(nlcd2001) %>% 
+  left_join(classCats, by='class')
+lsm_c_ca(nlcd2019) %>% 
+  left_join(classCats, by='class')
+
+# Mean patch size of each landcover type
+lsm_c_area_mn(nlcd2001, directions=8) %>% 
+  left_join(classCats, by='class')
+lsm_c_area_mn(nlcd2019, directions=8) %>% 
+  left_join(classCats, by='class')
+
+# Mean nearest neighbor distance
+lsm_c_enn_mn(nlcd2001, directions=8) %>% 
+  left_join(classCats, by='class')
+lsm_c_enn_mn(nlcd2019, directions=8) %>% 
+  left_join(classCats, by='class')
+
+```
+
+The quantity of wetland remained the same between 2001 and 2019, though there was never much to begin with. There was a small increased in "developed" land, and large increases in open, grassland, and agriculture landcover. The amount of forest decreased substantially. Mean patch sizes demonstrated a similar trend. Mean nearest-neighbor distances decreased overall.
+
+**Quantify these changes at the landscape level by calculating and reporting on changes in the (1) Shannon diversity and (2) Shannon evenness of the landscapes at the different time points. Give a short description of how you interpret the changes in these values.**
+
+```{r}
+lsm_l_shdi(nlcd2001)
+lsm_l_shdi(nlcd2019)
+
+lsm_l_shei(nlcd2001)
+lsm_l_shei(nlcd2019)
+```
+
+Both the Shannon diversity and evenness indices increased between 2001 and 2019. From a biodiversity point of view, this seems counter intuitive. However, given that they represent landcover classes in this instance, it makes sense that decreases in the dominant class (forest) would allow for the proliferation of other classes. The 2019 landscape includes more of the other classes distributed more evenly across the area.
+
+
+## Challenge 4 (4 points)
+
+**Use the voss2d() function to simulate a surface where g = 7 and H = 0.5. From that, create 9 'landscapes' with 10%, 20%, 30%, ..., 90% threshold values. The '1' values here can represent anything your imagination comes up with. It could be forest cover, cover of some other land cover type, bodies of water, temperatures above a threshold, etc. I suggest you set the seed for your simulation value so that you get the same outcome each time you run the code. Plot these landscapes and comment on what patterns you see changing as the value increases from a 10% cover to 90% cover.**
+
+```{r}
+set.seed(23)
+
+vossModel<-voss2d(g=7, H=0.5)
+vossModel<-rast(vossModel$z)
+plot(vossModel)
+
+threshold10<-quantile(as.matrix(vossModel), prob=0.1)
+voss10<-ifel(vossModel > threshold10, 0, 1)
+# plot(voss10)
+
+threshold20<-quantile(as.matrix(vossModel), prob=0.2)
+voss20<-ifel(vossModel > threshold20, 0, 1)
+# plot(voss20)
+
+threshold30<-quantile(as.matrix(vossModel), prob=0.3)
+voss30<-ifel(vossModel > threshold30, 0, 1)
+# plot(voss30)
+
+threshold40<-quantile(as.matrix(vossModel), prob=0.4)
+voss40<-ifel(vossModel > threshold40, 0, 1)
+# plot(voss40)
+
+threshold50<-quantile(as.matrix(vossModel), prob=0.5)
+voss50<-ifel(vossModel > threshold50, 0, 1)
+# plot(voss50)
+
+threshold60<-quantile(as.matrix(vossModel), prob=0.6)
+voss60<-ifel(vossModel > threshold60, 0, 1)
+# plot(voss60)
+
+threshold70<-quantile(as.matrix(vossModel), prob=0.7)
+voss70<-ifel(vossModel > threshold70, 0, 1)
+# plot(voss70)
+
+threshold80<-quantile(as.matrix(vossModel), prob=0.8)
+voss80<-ifel(vossModel > threshold80, 0, 1)
+# plot(voss80)
+
+threshold90<-quantile(as.matrix(vossModel), prob=0.9)
+voss90<-ifel(vossModel > threshold90, 0, 1)
+# plot(voss90)
+
+```
+
+As the percentage increases, the coverage area expands from the patches that were simulated in the first model. These plots worked on Friday, but I'm really unsure as to why they won't work now. I can force them individually if I paste the code into the console, but the chunk won't run on my end.
+
+**Identify 3 class-level or landscape-level metrics that help you capture the changes you are observing. Calculate those metrics for each of the 9 landscapes and plot them (x-axis is threshold value and y-axis is calculated metric). Briefly describe why you chose these 3 metrics and how they change with increasing cover.**
+
+```{r}
+# 1 Mean of patch area
+voss10Area<-lsm_l_area_mn(voss10, directions = 8)
+voss20Area<-lsm_l_area_mn(voss20, directions = 8)
+voss30Area<-lsm_l_area_mn(voss30, directions = 8)
+voss40Area<-lsm_l_area_mn(voss40, directions = 8)
+voss50Area<-lsm_l_area_mn(voss50, directions = 8)
+voss60Area<-lsm_l_area_mn(voss60, directions = 8)
+voss70Area<-lsm_l_area_mn(voss70, directions = 8)
+voss80Area<-lsm_l_area_mn(voss80, directions = 8)
+voss90Area<-lsm_l_area_mn(voss90, directions = 8)
+
+vossArea.df <- data.frame(
+  voss10Area = voss10Area$value,
+  voss20Area = voss20Area$value,
+  voss30Area = voss30Area$value,
+  voss40Area = voss40Area$value,
+  voss50Area = voss50Area$value,
+  voss60Area = voss60Area$value,
+  voss70Area = voss70Area$value,
+  voss80Area = voss80Area$value,
+  voss90Area = voss90Area$value
+)
+
+vossArea.df$threshold<-1
+vossAreaLong<-pivot_longer(vossArea.df, cols = -threshold, names_to = "landscape", values_to = "area")
+vossAreaLong$threshold<-rep(seq(0.1, 0.9, by = 0.1))
+
+plot(area~threshold, data = vossAreaLong)
+
+# Total area
+voss10TA<-lsm_l_ta(voss10, directions = 8)
+voss20TA<-lsm_l_ta(voss20, directions = 8)
+voss30TA<-lsm_l_ta(voss30, directions = 8)
+voss40TA<-lsm_l_ta(voss40, directions = 8)
+voss50TA<-lsm_l_ta(voss50, directions = 8)
+voss60TA<-lsm_l_ta(voss60, directions = 8)
+voss70TA<-lsm_l_ta(voss70, directions = 8)
+voss80TA<-lsm_l_ta(voss80, directions = 8)
+voss90TA<-lsm_l_ta(voss90, directions = 8)
+
+vossTA.df <- data.frame(
+  voss10TA = voss10TA$value,
+  voss20TA = voss20TA$value,
+  voss30TA = voss30TA$value,
+  voss40TA = voss40TA$value,
+  voss50TA = voss50TA$value,
+  voss60TA = voss60TA$value,
+  voss70TA = voss70TA$value,
+  voss80TA = voss80TA$value,
+  voss90TA = voss90TA$value
+)
+
+vossTA.df$threshold<-1
+vossTALong<-pivot_longer(vossTA.df, cols = -threshold, names_to = "landscape", values_to = "totalArea")
+vossTALong$threshold<-rep(seq(0.1, 0.9, by = 0.1))
+
+plot(totalArea~threshold, data = vossTALong)
+
+# 3 Patch cohesion index
+voss10Cohesion<-lsm_l_cohesion(voss10, directions = 8)
+voss20Cohesion<-lsm_l_cohesion(voss20, directions = 8)
+voss30Cohesion<-lsm_l_cohesion(voss30, directions = 8)
+voss40Cohesion<-lsm_l_cohesion(voss40, directions = 8)
+voss50Cohesion<-lsm_l_cohesion(voss50, directions = 8)
+voss60Cohesion<-lsm_l_cohesion(voss60, directions = 8)
+voss70Cohesion<-lsm_l_cohesion(voss70, directions = 8)
+voss80Cohesion<-lsm_l_cohesion(voss80, directions = 8)
+voss90Cohesion<-lsm_l_cohesion(voss90, directions = 8)
+
+vossCohesion.df <- data.frame(
+  voss10Cohesion = voss10Cohesion$value,
+  voss20Cohesion = voss20Cohesion$value,
+  voss30Cohesion = voss30Cohesion$value,
+  voss40Cohesion = voss40Cohesion$value,
+  voss50Cohesion = voss50Cohesion$value,
+  voss60Cohesion = voss60Cohesion$value,
+  voss70Cohesion = voss70Cohesion$value,
+  voss80Cohesion = voss80Cohesion$value,
+  voss90Cohesion = voss90Cohesion$value
+)
+
+vossCohesion.df$threshold<-1
+vossCohesionLong<-pivot_longer(vossCohesion.df, cols = -threshold, names_to = "landscape", values_to = "cohesionIndex")
+vossCohesionLong$threshold<-rep(seq(0.1, 0.9, by = 0.1))
+
+plot(cohesionIndex~threshold, data = vossCohesionLong)
+```
+
+I chose the mean patch area, the total patch area, and the patch cohesion index. The mean area and total area describe the patch structure pretty well together. At lower thresholds, the few patches there brought the average up. But as the threshold increased new, smaller patches brought the average down. This trend appears to continue back and forth until coverage reached 90%, at which point almost everything is one large patch. The cohesion index similarly reflects this progression towards one patch. 
+
+## Challenge 5 (4 points)
+
+**Use the voss2d() function to simulate 9 surfaces. In each one, g should be 7, but vary the value of H from 0.1 to 0.9. Create a unique landscape from each of these with a threshold value of 30% cover. Again, the 1 values can represent anything you desire, and again I suggest you set the seed for your simulation value so that you get the same outcome each time you run the code. Plot these landscapes and comment on what patterns you see changing as the H value increases from 0.1 to 0.9.**
+
+```{r}
+set.seed(23)
+
+vossModel1<-voss2d(g=7, H=0.1)
+vossModel1<-rast(vossModel1$z)
+plot(vossModel1)
+
+vossModel2<-voss2d(g=7, H=0.2)
+vossModel2<-rast(vossModel2$z)
+plot(vossModel2)
+
+vossModel3<-voss2d(g=7, H=0.3)
+vossModel3<-rast(vossModel3$z)
+plot(vossModel3)
+
+vossModel4<-voss2d(g=7, H=0.4)
+vossModel4<-rast(vossModel4$z)
+plot(vossModel4)
+
+vossModel5<-voss2d(g=7, H=0.5)
+vossModel5<-rast(vossModel5$z)
+plot(vossModel5)
+
+vossModel6<-voss2d(g=7, H=0.6)
+vossModel6<-rast(vossModel6$z)
+plot(vossModel6)
+
+vossModel7<-voss2d(g=7, H=0.7)
+vossModel7<-rast(vossModel7$z)
+plot(vossModel7)
+
+vossModel8<-voss2d(g=7, H=0.8)
+vossModel8<-rast(vossModel8$z)
+plot(vossModel8)
+
+vossModel9<-voss2d(g=7, H=0.9)
+vossModel9<-rast(vossModel9$z)
+plot(vossModel9)
+
+```
+
+As the H value increases, the degree of clustering also increases. The landscape looks more cohesive with like cells grouped together.
+
+**Identify 3 class-level or landscape-level metrics that help you capture the changes you are observing. THESE MUST BE DIFFERENT THAN THOSE METRICS YOU USED IN CHALLENGE 2. Calculate those metrics for each of the 9 landscapes and plot them (x-axis is H-value and y-axis is calculated metric). Briefly describe why you chose these 3 metrics and how they change with increasing cover.**
+
+```{r}
+
+# 1. Core area index
+voss1CAI<-lsm_c_cai_cv(vossModel1, directions = 8, consider_boundary = FALSE, edge_depth = 1)
+voss2CAI<-lsm_c_cai_cv(vossModel2, directions = 8, consider_boundary = FALSE, edge_depth = 1)
+voss3CAI<-lsm_c_cai_cv(vossModel3, directions = 8, consider_boundary = FALSE, edge_depth = 1)
+voss4CAI<-lsm_c_cai_cv(vossModel4, directions = 8, consider_boundary = FALSE, edge_depth = 1)
+voss5CAI<-lsm_c_cai_cv(vossModel5, directions = 8, consider_boundary = FALSE, edge_depth = 1)
+voss6CAI<-lsm_c_cai_cv(vossModel6, directions = 8, consider_boundary = FALSE, edge_depth = 1)
+voss7CAI<-lsm_c_cai_cv(vossModel7, directions = 8, consider_boundary = FALSE, edge_depth = 1)
+voss8CAI<-lsm_c_cai_cv(vossModel8, directions = 8, consider_boundary = FALSE, edge_depth = 1)
+voss9CAI<-lsm_c_cai_cv(vossModel9, directions = 8, consider_boundary = FALSE, edge_depth = 1)
+
+vossCAI.df <- data.frame(
+  voss1CAI = voss1CAI$value,
+  voss2CAI = voss2CAI$value,
+  voss3CAI = voss3CAI$value,
+  voss4CAI = voss4CAI$value,
+  voss5CAI = voss5CAI$value,
+  voss6CAI = voss6CAI$value,
+  voss7CAI = voss7CAI$value,
+  voss8CAI = voss8CAI$value,
+  voss9CAI= voss9CAI$value
+)
+
+vossCAI.df$H<-1
+vossCAILong<-pivot_longer(vossCAI.df, cols = -H, names_to = "surface", values_to = "coreAreaIndex")
+vossCAILong$H<-rep(seq(0.1, 0.9, by = 0.1))
+
+# plot(vossCAILong$coreAreaIndex~vossCAILong$H, data = vossCAILong)
+
+# 2. Total edge
+
+voss1TE<-lsm_l_te(vossModel1, count_boundary = FALSE)
+voss2TE<-lsm_l_te(vossModel2, count_boundary = FALSE)
+voss3TE<-lsm_l_te(vossModel3, count_boundary = FALSE)
+voss4TE<-lsm_l_te(vossModel4, count_boundary = FALSE)
+voss5TE<-lsm_l_te(vossModel5, count_boundary = FALSE)
+voss6TE<-lsm_l_te(vossModel6, count_boundary = FALSE)
+voss7TE<-lsm_l_te(vossModel7, count_boundary = FALSE)
+voss8TE<-lsm_l_te(vossModel8, count_boundary = FALSE)
+voss9TE<-lsm_l_te(vossModel9, count_boundary = FALSE)
+
+vossTE.df <- data.frame(
+  voss1TE = voss1TE$value,
+  voss2TE = voss2TE$value,
+  voss3TE = voss3TE$value,
+  voss4TE = voss4TE$value,
+  voss5TE = voss5TE$value,
+  voss6TE = voss6TE$value,
+  voss7TE = voss7TE$value,
+  voss8TE = voss8TE$value,
+  voss9TE = voss9TE$value
+)
+
+vossTE.df$H<-1
+vossTELong<-pivot_longer(vossTE.df, cols = -H, names_to = "surface", values_to = "totalEdge")
+vossTELong$H<-rep(seq(0.1, 0.9, by = 0.1))
+
+# plot(totalEdge~H, data = vossTELong)
+
+# 3. Edge density
+
+voss1ED<-lsm_l_ed(vossModel1, count_boundary = FALSE, directions = 8)
+voss2ED<-lsm_l_ed(vossModel2, count_boundary = FALSE, directions = 8)
+voss3ED<-lsm_l_ed(vossModel3, count_boundary = FALSE, directions = 8)
+voss4ED<-lsm_l_ed(vossModel4, count_boundary = FALSE, directions = 8)
+voss5ED<-lsm_l_ed(vossModel5, count_boundary = FALSE, directions = 8)
+voss6ED<-lsm_l_ed(vossModel6, count_boundary = FALSE, directions = 8)
+voss7ED<-lsm_l_ed(vossModel7, count_boundary = FALSE, directions = 8)
+voss8ED<-lsm_l_ed(vossModel8, count_boundary = FALSE, directions = 8)
+voss9ED<-lsm_l_ed(vossModel9, count_boundary = FALSE, directions = 8)
+
+vossED.df <- data.frame(
+  voss1ED = voss1ED$value,
+  voss2ED = voss2ED$value,
+  voss3ED = voss3ED$value,
+  voss4ED = voss4ED$value,
+  voss5ED = voss5ED$value,
+  voss6ED = voss6ED$value,
+  voss7ED = voss7ED$value,
+  voss8ED = voss8ED$value,
+  voss9ED = voss9ED$value
+)
+
+vossED.df$H<-1
+vossEDLong<-pivot_longer(vossED.df, cols = -H, names_to = "surface", values_to = "edgeDensity")
+vossEDLong$H<-rep(seq(0.1, 0.9, by = 0.1))
+
+# plot(edgeDensity~H, data = vossEDLong)
+
+# 4. mean of related circumscribing circle
+
+voss1Circle<-lsm_l_circle_mn(vossModel1, directions = 8)
+voss2Circle<-lsm_l_circle_mn(vossModel2, directions = 8)
+voss3Circle<-lsm_l_circle_mn(vossModel3, directions = 8)
+voss4Circle<-lsm_l_circle_mn(vossModel4, directions = 8)
+voss5Circle<-lsm_l_circle_mn(vossModel5, directions = 8)
+voss6Circle<-lsm_l_circle_mn(vossModel6, directions = 8)
+voss7Circle<-lsm_l_circle_mn(vossModel7, directions = 8)
+voss8Circle<-lsm_l_circle_mn(vossModel8, directions = 8)
+voss9Circle<-lsm_l_circle_mn(vossModel9, directions = 8)
+
+vossCircle.df <- data.frame(
+  voss1Circle = voss1Circle$value,
+  voss2Circle = voss2Circle$value,
+  voss3Circle = voss3Circle$value,
+  voss4Circle = voss4Circle$value,
+  voss5Circle = voss5Circle$value,
+  voss6Circle = voss6Circle$value,
+  voss7Circle = voss7Circle$value,
+  voss8Circle = voss8Circle$value,
+  voss9Circle = voss9Circle$value
+)
+
+vossCircle.df$H<-1
+vossCircleLong<-pivot_longer(vossCircle.df, cols = -H, names_to = "surface", values_to = "meanCircle")
+vossCircleLong$H<-rep(seq(0.1, 0.9, by = 0.1))
+
+# plot(meanCircle~H, data = vossCircleLong)
+
+```
+
+Things went super sideways here. I initially chose total edge and edge density to capture decreases in edge as aggregates of like cells formed. I also chose mean of the related circumscribing circle to represent increases in patch area as clusters came together. I added in core area index in an attempt to find something else that worked but I was not successful. 
+
