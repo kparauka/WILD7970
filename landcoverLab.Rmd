@@ -14,7 +14,7 @@ require(FedData)
 require(sf)
 require(tidyterra)
 require(landscapemetrics)
-require(PerformanceAnalytics)
+# require(PerformanceAnalytics)
 require(wesanderson)
 require(raster)
 require(terra)
@@ -122,6 +122,7 @@ PerformanceAnalytics::chart.Correlation(patchMetrics, histogram=F)
 
 A few of these metrics are very highly correlated (e.g., patchCore and patchArea or patchPerim and patchArea) with values at or very near 1. These metrics would probably be redundant and largely seem to describe how different features of the same patch relate. For example, patchCore is essentially patchArea minus the cells at the edge. It also makes sense that patchPerim and patchArea would be highly correlated - they are geometrically related features. Relatively few of the patch metrics demonstrate little or statistically insignificant degrees of correlation. It seems like these occur largely between metrics that describe the features of patches and those that describe the distribution of patches relative to others on the same landscape.
 
+$\color{red}{\text{Good stuff. +4}}$
 
 ## Challenge 2 (4 points)
 
@@ -164,6 +165,7 @@ lsm_c_te(nlcdSimple, directions = 8) %>%
 
 Most of the metrics increased as I switched from the rook to queen rule (mean patch size, standard deviation of patch size, and mean nearest neighbor distances). The number of patches decreased, presumably because the criteria for being considered a patch became more strict. And the total edge remained the same, which makes sense if you draw and measure the perimeters of two cells under different rules. I think in choosing one or the other, you would want to consider how conservative you want to be, the scale of what you're looking at, and the nature of the habitat types/patches (i.e. continuous or discrete). You might want to use a queen rule when looking at habitat patches over an area with variable elevation, but a rook rule might be more appropriate for urban developments and greenspaces in a city.
 
+$\color{red}{\text{Thumbs up emoji. +4}}$
 
 ## Challenge 3 (4 points)
 
@@ -246,6 +248,7 @@ lsm_l_shei(nlcd2019)
 
 Both the Shannon diversity and evenness indices increased between 2001 and 2019. From a biodiversity point of view, this seems counter intuitive. However, given that they represent landcover classes in this instance, it makes sense that decreases in the dominant class (forest) would allow for the proliferation of other classes. The 2019 landscape includes more of the other classes distributed more evenly across the area.
 
+$\color{red}{\text{Nice. +4}}$
 
 ## Challenge 4 (4 points)
 
@@ -260,43 +263,45 @@ plot(vossModel)
 
 threshold10<-quantile(as.matrix(vossModel), prob=0.1)
 voss10<-ifel(vossModel > threshold10, 0, 1)
-# plot(voss10)
+plot(voss10)
 
 threshold20<-quantile(as.matrix(vossModel), prob=0.2)
 voss20<-ifel(vossModel > threshold20, 0, 1)
-# plot(voss20)
+plot(voss20)
 
 threshold30<-quantile(as.matrix(vossModel), prob=0.3)
 voss30<-ifel(vossModel > threshold30, 0, 1)
-# plot(voss30)
+plot(voss30)
 
 threshold40<-quantile(as.matrix(vossModel), prob=0.4)
 voss40<-ifel(vossModel > threshold40, 0, 1)
-# plot(voss40)
+plot(voss40)
 
 threshold50<-quantile(as.matrix(vossModel), prob=0.5)
 voss50<-ifel(vossModel > threshold50, 0, 1)
-# plot(voss50)
+plot(voss50)
 
 threshold60<-quantile(as.matrix(vossModel), prob=0.6)
 voss60<-ifel(vossModel > threshold60, 0, 1)
-# plot(voss60)
+plot(voss60)
 
 threshold70<-quantile(as.matrix(vossModel), prob=0.7)
 voss70<-ifel(vossModel > threshold70, 0, 1)
-# plot(voss70)
+plot(voss70)
 
 threshold80<-quantile(as.matrix(vossModel), prob=0.8)
 voss80<-ifel(vossModel > threshold80, 0, 1)
-# plot(voss80)
+plot(voss80)
 
 threshold90<-quantile(as.matrix(vossModel), prob=0.9)
 voss90<-ifel(vossModel > threshold90, 0, 1)
-# plot(voss90)
+plot(voss90)
 
 ```
 
 As the percentage increases, the coverage area expands from the patches that were simulated in the first model. These plots worked on Friday, but I'm really unsure as to why they won't work now. I can force them individually if I paste the code into the console, but the chunk won't run on my end.
+
+$\color{red}{\text{The problem was that you had loaded the PerformanceAnalytics package. I need to just get rid of it. I don't fully understand why, but it causes bugs with other plot code. Anyways, I fixed it so its working now.}}$
 
 **Identify 3 class-level or landscape-level metrics that help you capture the changes you are observing. Calculate those metrics for each of the 9 landscapes and plot them (x-axis is threshold value and y-axis is calculated metric). Briefly describe why you chose these 3 metrics and how they change with increasing cover.**
 
@@ -331,26 +336,26 @@ vossAreaLong$threshold<-rep(seq(0.1, 0.9, by = 0.1))
 plot(area~threshold, data = vossAreaLong)
 
 # Total area
-voss10TA<-lsm_l_ta(voss10, directions = 8)
-voss20TA<-lsm_l_ta(voss20, directions = 8)
-voss30TA<-lsm_l_ta(voss30, directions = 8)
-voss40TA<-lsm_l_ta(voss40, directions = 8)
-voss50TA<-lsm_l_ta(voss50, directions = 8)
-voss60TA<-lsm_l_ta(voss60, directions = 8)
-voss70TA<-lsm_l_ta(voss70, directions = 8)
-voss80TA<-lsm_l_ta(voss80, directions = 8)
-voss90TA<-lsm_l_ta(voss90, directions = 8)
+voss10TA<-lsm_c_ca(voss10, directions = 8)
+voss20TA<-lsm_c_ca(voss20, directions = 8)
+voss30TA<-lsm_c_ca(voss30, directions = 8)
+voss40TA<-lsm_c_ca(voss40, directions = 8)
+voss50TA<-lsm_c_ca(voss50, directions = 8)
+voss60TA<-lsm_c_ca(voss60, directions = 8)
+voss70TA<-lsm_c_ca(voss70, directions = 8)
+voss80TA<-lsm_c_ca(voss80, directions = 8)
+voss90TA<-lsm_c_ca(voss90, directions = 8)
 
 vossTA.df <- data.frame(
-  voss10TA = voss10TA$value,
-  voss20TA = voss20TA$value,
-  voss30TA = voss30TA$value,
-  voss40TA = voss40TA$value,
-  voss50TA = voss50TA$value,
-  voss60TA = voss60TA$value,
-  voss70TA = voss70TA$value,
-  voss80TA = voss80TA$value,
-  voss90TA = voss90TA$value
+  voss10TA = voss10TA$value[2],
+  voss20TA = voss20TA$value[2],
+  voss30TA = voss30TA$value[2],
+  voss40TA = voss40TA$value[2],
+  voss50TA = voss50TA$value[2],
+  voss60TA = voss60TA$value[2],
+  voss70TA = voss70TA$value[2],
+  voss80TA = voss80TA$value[2],
+  voss90TA = voss90TA$value[2]
 )
 
 vossTA.df$threshold<-1
@@ -391,6 +396,8 @@ plot(cohesionIndex~threshold, data = vossCohesionLong)
 
 I chose the mean patch area, the total patch area, and the patch cohesion index. The mean area and total area describe the patch structure pretty well together. At lower thresholds, the few patches there brought the average up. But as the threshold increased new, smaller patches brought the average down. This trend appears to continue back and forth until coverage reached 90%, at which point almost everything is one large patch. The cohesion index similarly reflects this progression towards one patch. 
 
+$\color{red}{\text{Your code above didn't produce the total area figure you describe, so I made some tweaks. Overall, nice job. +3.5}}$
+
 ## Challenge 5 (4 points)
 
 **Use the voss2d() function to simulate 9 surfaces. In each one, g should be 7, but vary the value of H from 0.1 to 0.9. Create a unique landscape from each of these with a threshold value of 30% cover. Again, the 1 values can represent anything you desire, and again I suggest you set the seed for your simulation value so that you get the same outcome each time you run the code. Plot these landscapes and comment on what patterns you see changing as the H value increases from 0.1 to 0.9.**
@@ -400,14 +407,20 @@ set.seed(23)
 
 vossModel1<-voss2d(g=7, H=0.1)
 vossModel1<-rast(vossModel1$z)
+threshold = quantile(as.matrix(vossModel1), prob=0.3)
+vossModel1 = ifel(vossModel1 > threshold, 0, 1)
 plot(vossModel1)
 
 vossModel2<-voss2d(g=7, H=0.2)
 vossModel2<-rast(vossModel2$z)
+threshold = quantile(as.matrix(vossModel2), prob=0.3)
+vossModel2 = ifel(vossModel2 > threshold, 0, 1)
 plot(vossModel2)
 
 vossModel3<-voss2d(g=7, H=0.3)
 vossModel3<-rast(vossModel3$z)
+threshold = quantile(as.matrix(vossModel3), prob=0.3)
+vossModel3 = ifel(vossModel3 > threshold, 0, 1)
 plot(vossModel3)
 
 vossModel4<-voss2d(g=7, H=0.4)
@@ -564,4 +577,6 @@ vossCircleLong$H<-rep(seq(0.1, 0.9, by = 0.1))
 ```
 
 Things went super sideways here. I initially chose total edge and edge density to capture decreases in edge as aggregates of like cells formed. I also chose mean of the related circumscribing circle to represent increases in patch area as clusters came together. I added in core area index in an attempt to find something else that worked but I was not successful. 
+
+$\color{red}{\text{Good effort, Kalli. The problem was that you didn't turn the simulated landscapes into 0/1 classifications. I fixed the first 3 above, so you can see what direction you need to have gone. Overall, nice job. +2.5}}$
 
