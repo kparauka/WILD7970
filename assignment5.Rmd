@@ -1,0 +1,151 @@
+---
+title: "Lab 5 assignment - Point pattern analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+require(spatstat)
+require(tidyverse)
+require(terra)
+```
+
+
+# Challenge 1 (3 points)
+
+Create a simulation window on a landscape stretching from 0 to 100 units in both the x and y directions. Now simulate the distribution of an organism on this landscape using a Poisson process with a lambda value of 0.01. Plot this organism's distribution. How many organisms are there on your landscape? What is the expected number of organisms that you should find on this landscape based on your simulation parameters? Why?
+
+```{r}
+set.seed(42)
+simWindow<-owin(xrange = c(0,100), yrange = c(0,100))
+orgDist<-rpoispp(lambda = .01, win = simWindow, nsim = 1)
+
+plot(orgDist)
+plot(density(orgDist,1))
+
+summary(orgDist)
+```
+
+There are 113 points in the window/organisms on the landscape. Based on these simulation parameters (i.e. lambda = 0.01 and area = 10,000), there should be approximately 100 points/organisms (10000 * .01). \
+
+# Challenge 2 (3 points)
+
+Verify that there no linear or quadratic pattern in the distribution of your organisms using fitted Poisson process models. Show the outcome of this analysis and explain your conclusion.
+
+```{r}
+# Ripley's K 
+kNone<-Kest(orgDist, correction = 'none')
+plot(kNone)
+kCsr<-envelope(orgDist, Kest, nsim = 99, rank = 1, correction = 'translate', global = F)
+plot(kCsr,shade = c('hi', 'lo'), legend = F)
+
+# Ripley's L 
+lNone<-Lest(orgDist, correction = 'none')
+plot(lNone)
+# is the observed pattern statistically different from CSR?
+lCsr<-envelope(orgDist, Lest, nsim = 99, rank = 1, correction = 'translate', global = F)
+plot(lCsr, .-r~r, shade = c('hi', 'lo'), legend = F)
+```
+
+The distribution is effectively random. The black line representing the K and L values from the data tracks the expected line closely and falls well within the envelope representing CSR.
+
+# Challenge 3 (14 points)
+
+I have simulated the distributions of 2 critters and provided their x-y coordinates. One of them is a non-territorial predator. The second is a critter that is preyed upon by the predator and exhibits a fear response to the predator's presence. Use the tools you learned in the lab to explore the distributions of these two critters. Identify which one is the predator and which is the prey, and provide code and a thorough justification supporting your conclusion.
+
+
+```{r}
+predPreyWin = owin(xrange = c(0, 100), yrange = c(0, 100))
+
+critter1 = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week5/species1.csv') %>% 
+  mutate(org = 'critter1')
+
+critter2 = read.csv('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week5/species2.csv') %>% 
+  mutate(org = 'critter2')
+```
+
+Plots
+```{r}
+pppCritter1<-ppp(x = critter1$x, y = critter1$y, window = predPreyWin)
+pppCritter2<-ppp(x = critter2$x, y = critter2$y, window = predPreyWin)
+
+plot(pppCritter1, main = "1 and 2 at a glance")
+plot(pppCritter2, add = TRUE, col = "blue")
+```
+\
+\
+I plotted the distributions together first to visualize what's happening on the landscape. The first thing I noticed was a pretty substantial cluster of "Critter 1s" in the top left corner. There are a few smaller clusters of each species throughout the landscape, but otherwise, most of the points are fairly spaced out. I'm guessing that the  fear response of the prey species will most likely drive them away from predators and (consequently) near each other, so I'll start by trying to test for aggregations/clustering. The predator species is not territorial and no hunting behavior was mentioned in the prompt, so I suppose that they will be more or less randomly distributed across the landscape. 
+
+Chi-Squared tests
+```{r}
+quadC1<-quadratcount(pppCritter1, nx = 4, ny = 4)
+plot(pppCritter1)
+plot(quadC1, add = T)
+quadrat.test(pppCritter1, nx =4, ny = 4, method = 'Chisq')
+```
+```{r}
+quadC2<-quadratcount(pppCritter2, nx = 4, ny = 4)
+plot(pppCritter2)
+plot(quadC2, add = T)
+quadrat.test(pppCritter2, nx =4, ny = 4, method = 'Chisq')
+```
+These are probably over simplistic. But they're helpful to me, so I'm including them. If the null hypothesis is CSR, then these tests suggest that Critter 1 may be exhibiting non-random distribution on this landscape (p = 0.03325), but the distribution of Critter 2 is apparently random (p = 0.1952). 
+
+
+Ripley's K
+```{r}
+# kCsr1<-envelope(pppCritter1, Kest, nsim = 99, rank = 1, correction = 'translate', global = F)
+# plot(kCsr1, .-r~r, shade = c('hi', 'lo'), legend = F) 
+# Do I even need this?
+
+# kCsr2<-envelope(pppCritter2, Kest, nsim = 99, rank = 1, correction = 'translate', global = F)
+# plot(kCsr2, .-r~r, shade = c('hi', 'lo'), legend = F)
+# Do I even need this?
+```
+
+Ripley's L
+```{r}
+lCritter1<-envelope(pppCritter1, Lest, nsim = 99, rank = 1, correction = 'translate', global = F)
+plot(lCritter1, .-r~r, shade = c('hi', 'lo'), legend = F)
+
+lCritter2<-envelope(pppCritter2, Lest, nsim = 99, rank = 1, correction = 'translate', global = F)
+plot(lCritter2, .-r~r, shade = c('hi', 'lo'), legend = F)
+
+# Note to self because you'll forget this later: .-r~r subtracts the radius from each estimate to show you the distribution relative to a zero line. 
+```
+\
+Based on these, it looks like there's some weak evidence of clustering with respect to Critter 1 at about 10 meters (units?) but none really for Critter 2. This seems pretty consistent with the outcome of the X^2 tests. 
+
+Exploring that further with pair correlation function:
+```{r}
+pcfCritter1<-envelope(pppCritter1, pcf, nsim = 99, rank = 1, correction = 'translate', global = F)
+plot(pcfCritter1, shade = c('hi', 'lo'), legend = F)
+```
+\
+At this point, I think that Critter 1 is the prey species and Critter 2 is the predator species. I'm confident that Critter 2 is randomly distributed throughout the landscape. I think there's some weak evidence in favor of Critter 1 clustering, which could be a function of the fear response, the size of the landscape, and the number of individuals. Avoiding predators might coincidentally drive some individuals together sometimes, but not consistently enough to be statistically significant pattern of behavior.
+ 
+```{r}
+crittersCombined<-rbind(critter1, critter2)
+pppCombined<-ppp(x = crittersCombined$x, y = crittersCombined$y, window = predPreyWin, marks = as.factor(crittersCombined$org))
+
+#Lcross analyses
+
+lMultiCombined1i<-envelope(pppCombined, Lcross, nsim = 99, rank = 1, global = F, i = 'critter1', j = 'critter2', simulate = expression(rlabel(pppCombined)))
+plot(lMultiCombined1i, .-r~r, legend = F)
+
+lMultiCombined2i<-envelope(pppCombined, Lcross, nsim = 99, rank = 1, global = F, i = 'critter2', j = 'critter1', simulate = expression(rlabel(pppCombined)))
+plot(lMultiCombined2i, .-r~r, legend = F)
+```
+\
+I combined the point location data from both species and used the Lcross function to explore distance between points based on type/species. The resulting graphs look pretty similar, regardless of which species you designate as "i." Differences really only start to appear at larger radii. \
+\
+\
+I'm going to reason this out based on the assumption that Critter 1 is the prey species and Critter 2 is the predator species because that's where my analyses have led me up to this point. When you measure the distances of Critter 2s relative to Critter 1s, after about 20 m, individual Critter 1s are unable to put any more distance between themself and a given predator without nearing another predator. This is the only mathematical explanation I can think of for the trend change after 20 m. If you reverse i and j and use the Critter 2 locations as the points of reference, there's a much more consistent tendency for Critter 1s to be further away across virtually all radii. I suppose that the lack of trend reversal in this model (?) is related to the equation for Ripley's K/L, although I can't pinpoint what that would be.
+\
+\
+\
+\
+
+
+
