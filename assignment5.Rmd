@@ -29,6 +29,8 @@ summary(orgDist)
 
 There are 113 points in the window/organisms on the landscape. Based on these simulation parameters (i.e. lambda = 0.01 and area = 10,000), there should be approximately 100 points/organisms (10000 * .01). \
 
+$\color{red}{\text{Perfect. +3}}$
+
 # Challenge 2 (3 points)
 
 Verify that there no linear or quadratic pattern in the distribution of your organisms using fitted Poisson process models. Show the outcome of this analysis and explain your conclusion.
@@ -49,6 +51,17 @@ plot(lCsr, .-r~r, shade = c('hi', 'lo'), legend = F)
 ```
 
 The distribution is effectively random. The black line representing the K and L values from the data tracks the expected line closely and falls well within the envelope representing CSR.
+
+$\color{red}{\text{You missed the mark on this one a bit, Kalli. I wanted to see you model the distribution of your simulated points as a linear and quadratic function of the x and y coordinates, then compare those fitted models with an intercept-only model. See my code below. When you compare the AIC values of these models, you'll see that the intercept-only model has the lowest value, indicating the model with the most support. +1}}$
+
+```{r}
+ppInt = ppm(orgDist, ~1)
+ppXy = ppm(orgDist, ~ x + y)
+ppXy2 = ppm(orgDist, ~polynom (x, y, 2))
+
+data.frame(model = c('int', 'xy', 'xy2'),
+           AIC = c(AIC(ppInt), AIC(ppXy), AIC(ppXy2)))
+```
 
 # Challenge 3 (14 points)
 
@@ -147,5 +160,6 @@ I'm going to reason this out based on the assumption that Critter 1 is the prey 
 \
 \
 
+$\color{red}{\text{Great work, Kalli. +14}}$
 
 
