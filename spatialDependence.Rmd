@@ -3,6 +3,10 @@ title: "R Notebook"
 output: html_notebook
 ---
 
+
+$\color{red}{\text{Your lab answers are perfect, Kalli, but I have to ding you because even though you are allowed 2 late assignments, the late assignment is supposed to be turned in within 1 week of the original due date, and yours was almost 2 weeks late. Nonetheless, great job. -5}}$
+
+
 ```{r}
 require(terra)
 require(tidyverse)
@@ -32,6 +36,9 @@ ggplot(blueVanes, aes(x=x, y=y, color=meanBee))+
 ```
 
 Yes, there does appear to be some sort of spatial dependence in the average number of bees. There are some small but pretty discrete patches of blue and yellow separated by areas of pink dots, suggesting a clustered/non-random distribution of bees.
+
+$\color{red}{\text{Good. +2}}$
+
 
 # Challenge 2 (3 points)
 
@@ -88,6 +95,9 @@ lines(mlGaus, col='green')
 With regards to the correlogram, it looks like the average number of bees is positively autocorrelated up to approximately 20 m, after which it falls below 0. Between the 30- and 50-m distance bands, there appears to be a very slight negative trend, but after that there is no clear indication of spatial autocorrelation. The trendline straddles 0 and falls again as it approaches the highest bands that should be interpreted (2/3 of the maximum distance between points, just under 90 m).
 
 I fit a Gaussian model to the variogram based on the AIC values. It was marginally better than the exponential and Matern models, which were the same, and drastically better than the spherical model. The variogram is consistent with the correlogram in that there is evidence of reduced variance between the average number of bees at lower bands, again up to approximately 20 m. After that, the semi-variance falls loosely within the envelope indicating consistency with CSR at these distance bands.
+
+$\color{red}{\text{Excellent. +3}}$
+
 
 # Challenge 3 (4 points)
 
@@ -154,6 +164,9 @@ The model-estimated intercept and the mean bee abundance value are the same (13.
 
 The correlogram and semi-variogram produced by the residuals appear to be the same as those produced by the raw data, although it's entirely possible that I did this wrong. Nonetheless, these suggest that the spatial autocorrelation structure in the residuals is similar to that of the raw data. I think this might mean that the model is failing to capture all of the spatial dependence in the data (?).
 
+$\color{red}{\text{You didn't do anything wrong! +4}}$
+
+
 # Challenge 4 (4 points)
 
 Conventional wisdom indicates that the distribution of floral resources may substantially influence bee abundance. In addition, I am  completely making up the following fact: the average bee has a perceptual range of about 15 m. Below I have provided code for importing a raster that shows the number of flowers counted in 1 m grid cells across the entire study area. Use the focal() function from the previous lab to generate a new raster in which each cell value represents the mean number of flowers in cells within a 15 m radius. Plot the distribution of the blue vane traps over the 15 m focal raster. No text required here, just show me the plot.
@@ -167,13 +180,16 @@ plot(floralMean)
 points(blueVanes$x, blueVanes$y, col="blue")
 ```
 
+$\color{red}{\text{Good. +4}}$
+
+
 # Challenge 5 (4 points)
 
 Extract the focal flower value from the raster you just created at each point using the extract() function. You now have an estimate for the average number of flowers per meter around each blue vane trap. Fit a second linear model, but this time include average floral abundance within 15 m as a covariate. Export the residuals from this fitted model, and again, examine a correlogram and variogram of the residuals. As always, be sure to plot random envelopes. Now what do you notice?
 
 ```{r}
 # Extracting values and making the second model
-focalFloralValue <- extract(floralMean, data.frame(blueVanes$x, blueVanes$y), method='simple')
+focalFloralValue <- terra::extract(floralMean, data.frame(blueVanes$x, blueVanes$y), method='simple')
 beesNflowers <- lm(blueVanes$meanBee~1+focalFloralValue$focal_mean)
 floralResiduals <- data.frame(blueVanes$x, blueVanes$y, residuals(beesNflowers))
 
@@ -220,8 +236,14 @@ lines(mlMat3, col='orange')
 ```
 Both the correlogram and the semi-variogram suggest no spatial autocorrelation in mean bee abundances at virtually all distance bands when floral abundance is factored into the model - except at roughly 15 m, which we know to be the perceptual range of bees. At approximately this distance band, spatial autocorrelation trends slightly negative. 
 
+$\color{red}{\text{Be careful with your words. There is no spatial autocorrelation in RESIDUAL mean bee abundances after accounting for floral abundance. +4}}$
+
+
 # Challenge 6 (3 points)
 
 What is your assessment regarding the distribution of bee abundance in this study area? Does it exhibit spatial dependence, and if so, what is driving that pattern?
 
 I think there is some evidence of spatial dependence in the study area, but that it is concurrent with floral abundance at the local scale. The lower distance bands are key. The very first correlogram based on the raw data demonstrated spatial dependence at bands that were consistent with what we now know to be the perceptual range of bees. But the distribution of flowers does appear to have a non-zero effect on the average bee abundance. You can see this simply by comparing the hot and cold spots of the floral raster to the basic blueVanes plot from Challenge 1. Ultimately, I think the driver of bee abundance is probably the flowers, but the mechanism of spatial dependence is the perceptual range/foraging behavior of the bees. 
+
+
+$\color{red}{\text{Nice. +3}}$
