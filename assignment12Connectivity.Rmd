@@ -138,6 +138,8 @@ plot(passageMapT.001)
 
 When theta is low, the probability of of movement at each cell is also low. In this case, movement is diffuse and no firm boundaries to movement exist on the landscape. As theta increases, passage probabilities become increasingly well-defined, specifically around the least-cost corridor. 
 
+I don't think that it's realistic to try and create or preserve a corridor between two patches of habitat that fully envelopes every possible path an animal could take to travel between them. Even if you had ample funding to do so, it would most likely be very difficult in a more political sense. I think the most realistic corridor is a function of what stakeholders will allow, what you're willing to fund, and what animals could use.  
+
 
 # Challenge 4 (5 points)
 
