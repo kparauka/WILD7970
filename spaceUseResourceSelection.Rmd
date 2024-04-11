@@ -1,0 +1,255 @@
+---
+title: "Space Use and Resource Selection"
+output:
+  html_document:
+    df_print: paged
+---
+```{r}
+# packages
+require(tidyverse)
+require(terra)
+require(tidyterra)
+require(sf)
+require(adehabitatHR)
+require(adehabitatLT)
+require(landscapemetrics)
+require(ggplot2)
+```
+
+```{r}
+# read in and format the panther data
+panthers <- st_read('/vsicurl/https://github.com/ValenteJJ/SpatialEcology/raw/main/Week10/panthers.shp') %>%
+  mutate(CatID = as.factor(CatID))
+
+panthersSp <- as(panthers, 'Spatial')
+
+panther100 <- panthersSp[panthersSp$CatID==100,]
+panther130 <- panthersSp[panthersSp$CatID==130,]
+panther131 <- panthersSp[panthersSp$CatID==131,]
+panther137 <- panthersSp[panthersSp$CatID==137,]
+panther143 <- panthersSp[panthersSp$CatID==143,]
+panther147 <- panthersSp[panthersSp$CatID==147,]
+
+catID <- unique(panthers$CatID)
+```
+```{r}
+# read in and format the landcover data
+land <- rast('https://github.com/ValenteJJ/SpatialEcology/raw/main/Week10/panther_landcover.tif')
+classification <- read.table('https://raw.githubusercontent.com/ValenteJJ/SpatialEcology/main/Week10/landcover%20reclass.txt', header=T) 
+land <- classify(land, classification[,c(1,3)])
+land <- categories(land, value=unique(classification[,c(3,4)]))
+
+# identify wet forest
+wetForest <- land
+values(wetForest) = 0
+wetForest[land %in% c(10,12)] = 1
+probMatrix <- focalMat(wetForest, 5000, type='circle', fillNA=FALSE)
+wetFocal <- focal(wetForest, probMatrix, fun='sum', na.rm=T)
+
+# identify dry forest
+dryForest <- land
+values(dryForest) = 0
+dryForest[land %in% c(11, 13)] = 1
+probMatrix = focalMat(dryForest, 5000, type='circle', fillNA=FALSE)
+dryFocal = focal(dryForest, probMatrix, fun='sum', na.rm=T)
+
+# combine
+layers <- c(land, wetFocal, dryFocal)
+names(layers) <- c('landcover', 'wetForest', 'dryForest')
+```
+
+
+Minimum convex polygon
+```{r}
+mcp95 <- mcp(panthersSp[,'CatID'], percent = 95)
+mcp <- mcp95$area
+```
+
+Kernel density estimate
+```{r}
+kernelHrefEpa <- kernelUD(panthersSp[,'CatID'], h = 'href', kern = 'epa')
+kde95Sf <- st_as_sf(getverticeshr(kernelHrefEpa, percent = 95))
+
+kde <- kde95Sf$area
+```
+
+Local Convex Hull
+```{r}
+# panther 100
+initA100 <- round(max(dist(coordinates(panther100))), 0) # initialize
+searchA100 <- seq(initA100, 2*initA100, by = 3000) # by distance in meters
+locohArange100 <- LoCoH.a.area(SpatialPoints(coordinates(panther100)), arange = searchA100) 
+locohA100 <- LoCoH.a(SpatialPoints(coordinates(panther100)), a = searchA100[5])
+locohA100Sf <- st_as_sf(locohA100)
+locohA100Sf95 <- locohA100Sf[107,]
+
+# panther 130
+initA130 <- round(max(dist(coordinates(panther130))), 0) # initialize
+searchA130 <- seq(initA130, 2*initA130, by = 3000) # by distance in meters
+locohArange130 <- LoCoH.a.area(SpatialPoints(coordinates(panther130)), arange = searchA130)
+locohA130 <- LoCoH.a(SpatialPoints(coordinates(panther130)), a = searchA130[2])
+locohA130Sf <- st_as_sf(locohA130)
+locohA130Sf94 <- locohA130Sf[76,]
+
+# panther 131
+initA131 <- round(max(dist(coordinates(panther131))), 0) # initialize
+searchA131 <- seq(initA131, 2*initA131, by = 3000) # by distance in meters
+locohArange131 <- LoCoH.a.area(SpatialPoints(coordinates(panther131)), arange = searchA131)
+locohA131 <- LoCoH.a(SpatialPoints(coordinates(panther131)), a = searchA131[9])
+locohA131Sf <- st_as_sf(locohA131)
+locohA131Sf95 <- locohA131Sf[74,]
+
+# panther 137
+initA137 <- round(max(dist(coordinates(panther137))), 0) # initialize
+searchA137 <- seq(initA137, 2*initA137, by = 3000) # by distance in meters
+locohArange137 <- LoCoH.a.area(SpatialPoints(coordinates(panther137)), arange = searchA137)
+locohA137 <- LoCoH.a(SpatialPoints(coordinates(panther137)), a = searchA137[6]) 
+locohA137Sf <- st_as_sf(locohA137)
+locohA137Sf93 <- locohA137Sf[97,]
+
+# panther 143
+initA143 <- round(max(dist(coordinates(panther143))), 0) # initialize
+searchA143 <- seq(initA143, 2*initA143, by = 3000) # by distance in meters
+locohArange143 <- LoCoH.a.area(SpatialPoints(coordinates(panther143)), arange = searchA143)
+locohA143 <- LoCoH.a(SpatialPoints(coordinates(panther143)), a = searchA143[9])
+locohA143Sf <- st_as_sf(locohA143)
+locohA143Sf93 <- locohA143Sf[114,]
+
+# panther 147
+initA <- round(max(dist(coordinates(panther147))), 0) # initialize
+searchA <- seq(initA, 2*initA, by = 3000) # by distance in meters
+locohArange <- LoCoH.a.area(SpatialPoints(coordinates(panther147)), arange = searchA)
+locohA <- LoCoH.a(SpatialPoints(coordinates(panther147)), a = searchA[5])
+locohASf <- st_as_sf(locohA)
+locohA92Sf <- locohASf[97,]
+
+aLoCoH <- c(locohA100Sf95$area, locohA130Sf94$area, locohA131Sf95$area, locohA137Sf93$area, locohA143Sf93$area, locohA92Sf$area)
+```
+
+Brownian bridge estimate
+```{r}
+substrRight <- function(x,n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+
+panthersSp <- panthers %>% 
+  mutate(Juldate <- as.character(Juldate)) %>% 
+  mutate(date = as.numeric(substrRight(Juldate, 3))) %>% 
+  mutate(Date = as.Date(date, origin=as.Date("2006-01-01"))) %>% 
+  mutate(Date = as.POSIXct(Date, "%Y-%m-%d")) %>% 
+  as('Spatial')
+
+pantherLtraj <- as.ltraj(xy = coordinates(panthersSp), date = panthersSp$Date, id = panthersSp$CatID, typeII = T)
+
+sigma1 <- liker(pantherLtraj, sig2 = 450, rangesig1 = c(2,100))
+
+bb100 <- kernelbb(pantherLtraj[1], sig1 = 13.8, sig2 = 450, grid = 500)
+bb100.95 <- st_as_sf(getverticeshr(bb100), percent = 95)
+
+bb130 <- kernelbb(pantherLtraj[2], sig1 = 18.1, sig2 = 450, grid = 500)
+bb130.95 <- st_as_sf(getverticeshr(bb130), percent = 95)
+
+bb131 <- kernelbb(pantherLtraj[3], sig1 = 14.0, sig2 = 450, grid = 500)
+bb131.95 <- st_as_sf(getverticeshr(bb131), percent = 95)
+
+bb137 <- kernelbb(pantherLtraj[4], sig1 = 15.1, sig2 = 450, grid = 500)
+bb137.95 <- st_as_sf(getverticeshr(bb137), percent = 95)
+
+bb143 <- kernelbb(pantherLtraj[5], sig1 = 10.8, sig2 = 450, grid = 500)
+bb143.95 <- st_as_sf(getverticeshr(bb143), percent = 95)
+  
+bb147 <- kernelbb(pantherLtraj[6], sig1 = 7.2, sig2 = 450, grid = 500)
+bb147.95 <- st_as_sf(getverticeshr(bb147), percent = 95)
+
+bb <-c(bb100.95$area, bb130.95$area, bb131.95$a, bb137.95$area, bb143.95$area, bb147.95$area)
+```
+
+
+# Challenge 1 (4 points)
+
+Create a table with 6 rows and 5 columns. Each row should represent one panther. The first column should represent the panther's ID, and the other 4 columns should represent the estimated 95% home range from the 4 methods we used (MCP, KDE, a-LoCoH, and Brownian bridge). Make sure that all of your units for your home range estimates are the same. Ensure that the final table outputs from the code below.
+
+
+```{r}
+panthersHR <- data.frame(catID, mcp, kde, aLoCoH, bb)
+print(panthersHR)
+```
+
+No text necessary.
+
+
+# Challenge 2 (4 points)
+
+Build a boxplot showing the distribution of home range sizes. Your x-axis should have 4 categories (one for each home range type), and your y-axis should show the distribution of the home ranges for the 6 panthers. Which home range estimates tend to be largest? Which ones tend to be smallest? What is your intuitive explanation for why this pattern occurs?
+
+```{r}
+panthersHR_long <- gather(panthersHR, key = "Variable", value = "Value", -catID)
+
+ggplot(panthersHR_long, aes(x = Variable, y = Value, fill = Variable)) +
+  geom_boxplot() +
+  labs(title = "panthers home range", y = "home range size", x = "calculation method") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+The kernel density estimates and the Brownian bridge estimates seem to be similar and slightly higher than the local convex hull and minimum convex polygon estimates. What stands out is the range of the kernel density estimates. I think this might be a function of the bandwidth selection (?).
+
+# Challenge 3 (3 points)
+
+Choose 1 panther and generate a 100% home range based on the MCP. Calculate (and report) the proportion of this polygon comprised of wet and dry forest. Do you think these amounts are representative of the wet and dry forest available to your panther? Why or why not?
+
+```{r}
+mcp100 <- mcp(panther100, percent = 100, unin = 'm', unout = 'km2')
+mcp100Sf <- st_as_sf(mcp100)
+
+habMcp100 = extract(land, mcp100Sf) %>% 
+  rename(landcover = Description2) %>% 
+  group_by(ID, landcover) %>% 
+  summarise(habCells = n()) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(totCells = sum(habCells)) %>% 
+  ungroup() %>% 
+  mutate(propCells = habCells/totCells) %>% 
+  pivot_wider(id_cols = ID, names_from = landcover, values_from = propCells, values_fill=0) %>% 
+  mutate(ID = mcp100Sf$id) 
+
+habMcp100
+
+habMcp100Wet <- habMcp100$CypressSwamp + habMcp100$HardwoodSwamp
+habMcp100Wet
+
+habMcp100Dry <- habMcp100$Pineland + habMcp100$UplandForest
+habMcp100Dry
+
+# I really can't get myself to the proportion part. I know that the solution has to be very easy and I've probably done it before in another lab but I am at a dead end.
+
+```
+
+In any case, these estimates are probably a fairly reasonable approximation of what's available to the individual. Although I think the estimates are only as good as mcp calculation. If anything, they might be a bit of an overestimate.
+
+# Challenge 4 (6 points)
+
+Using the same panther you chose for Challenge 3, generate 10 sf objects, one representing each of the 10%, 20%, 30%, ..., 90%, and 100% home ranges based on a Brownian bridge model. Extract the proportion of each of those territories comprised of dry forest and wet forest. Now generate two line graphs, one for wet forest and one for dry. On the x-axis, plot increasing home range size (10-100%). On the y-axis plot the proportion of the territory comprised of wet/dry forest, and link these with a line. Finally, add a horizontal line that shows the rough proportion of that forest type available to the panther (based on challenge 3). Show your output below.
+
+```{r}
+bb100.10 <- st_as_sf(getverticeshr(bb100), percent = 10)
+bb100.20 <- st_as_sf(getverticeshr(bb100), percent = 20)
+bb100.30 <- st_as_sf(getverticeshr(bb100), percent = 30)
+bb100.40 <- st_as_sf(getverticeshr(bb100), percent = 40)
+bb100.50 <- st_as_sf(getverticeshr(bb100), percent = 50)
+bb100.60 <- st_as_sf(getverticeshr(bb100), percent = 60)
+bb100.70 <- st_as_sf(getverticeshr(bb100), percent = 70)
+bb100.80 <- st_as_sf(getverticeshr(bb100), percent = 80)
+bb100.90 <- st_as_sf(getverticeshr(bb100), percent = 90)
+bb100.100 <- st_as_sf(getverticeshr(bb100), percent = 100)
+```
+
+No text needed
+
+# Challenge 5 (3 points)
+
+Does the panther you chose in Challenge 3/4 prefer dry and/or wet forest? What is your justification for your answer?
+
+It seems like panther 100 prefers wet forest based exclusively on the two numbers I came up with in Challenge 3, although I'm not sure how valid a conclusion about preference would be. There's always a question of availability, and I think there are most likely biotic factors at play in this case as well. My understanding is that toms (especially younger ones) can have a broad range with a lot of wandering. I think panthers are also fairly territorial. I think it's somewhat overly simplistic to draw a line directly from landcover proportions in an animal's home range to habitat preference. 
+
