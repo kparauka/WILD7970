@@ -105,6 +105,8 @@ At this scale, the Euclidean distances between patches will always be the smalle
 
 I think you would see significant differences in distance calculations over a landscape with variable elevation. For example, the Euclidean distance between two ridges on either side of a valley could be very short, but even if you ignore the other resistance-producing features of a landscape, an animal would still need to travel down one slope, across the valley, and up another slope to get to the other side. When you do factor in features of the landscape that could create resistance, such as a river in the valley, the differences increase further. 
 
+$\color{red}{\text{Good, but where's my RSP distances and correlation matrix? +3}}$
+
 # Challenge 2 (5 points)
 
 In the lab we developed a 10% least-cost corridor between two protected areas. Identify what proportion of this corridor is comprised of each landcover type based on the land raster. To do this, make sure that both the land and leastCostCorridor10 rasters are spatRasters. Then mask land with leastCostCorridor10. The values in the resulting raster will be representative of the landcover values in the corridor. Summarise this information and refer back to the classification dataframe to link the landcover numbers with landcover types. What are the three most common landcover types within this corridor, and does this make sense given what you know about the resistance to movement within such landcover types?
@@ -119,6 +121,9 @@ table(as.vector(corridorLand))
 ```
 
 The three most common landcover types are cypress swamp (17), pinelands (9), and freshwater marsh (12). All three of these are relatively easy for panthers to move through, unlike high- and low-impact urban landcover types (42 and 41, respectively), so it is logical for the least cost corridor to consist largely of these.  
+
+$\color{red}{\text{Good. +5}}$
+
 
 
 # Challenge 3 (5 points)
@@ -139,6 +144,9 @@ plot(passageMapT.001)
 When theta is low, the probability of of movement at each cell is also low. In this case, movement is diffuse and no firm boundaries to movement exist on the landscape. As theta increases, passage probabilities become increasingly well-defined, specifically around the least-cost corridor. 
 
 I don't think that it's realistic to try and create or preserve a corridor between two patches of habitat that fully envelopes every possible path an animal could take to travel between them. Even if you had ample funding to do so, it would most likely be very difficult in a more political sense. I think the most realistic corridor is a function of what stakeholders will allow, what you're willing to fund, and what animals could use.  
+
+$\color{red}{\text{Nice. +5}}$
+
 
 
 # Challenge 4 (5 points)
@@ -197,3 +205,5 @@ pc_7
 ```
 
 Removing a patch, regardless of whether it was 6 or 7, reduced the IIC. However, the IIC sans patch 6 was very slightly higher than the IIC sans patch 7. Similarly, the PC decreased no matter which patch was removed. Although in this case, the PC sans patch 7 was very slightly higher. 
+
+$\color{red}{\text{And what does that mean in terms of the value of patch 6 and 7 for overall landscape connectivity? +4}}$
